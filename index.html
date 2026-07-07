@@ -419,6 +419,7 @@
 
     // ============================================================
     // GERAR JSON NO FORMATO: {"id":X,"artist":"Artista","title":"Titulo","genero":"Genero","src":"arquivo.ext"}
+    // COM INDENTAÇÃO DE 4 ESPAÇOS (conforme solicitado)
     // ============================================================
     function gerarJSONLinha() {
         if (playlist.length === 0) return '[]';
@@ -432,7 +433,8 @@
             };
             return JSON.stringify(obj);
         });
-        return '[\n' + objetos.join(',\n') + '\n]';
+        // Junta com quebra de linha e identa com 4 espaços
+        return '[\n' + objetos.map(line => '    ' + line).join(',\n') + '\n]';
     }
 
     function updateUI() {
@@ -1121,7 +1123,7 @@
             }
         });
 
-        showStatus('🎵 Pronto! Reconhece (Artista)_Titulo.ext e remove MUZZIK, preservando parênteses.', 'info');
+        showStatus('🎵 Pronto! JSON com indentação de 4 espaços.', 'info');
     });
 </script>
 </body>
