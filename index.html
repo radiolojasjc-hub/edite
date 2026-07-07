@@ -1,0 +1,1128 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Playlist + Renomeador Inteligente</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsmediatags/3.9.5/jsmediatags.min.js"></script>
+    <style>
+        * { box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
+        body { background: #1e1e2e; display: flex; justify-content: center; padding: 20px; margin: 0; }
+        .container { max-width: 1200px; width: 100%; background: #2d2d44; border-radius: 16px; padding: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        h1 { color: #fff; margin: 0 0 10px 0; font-weight: 300; }
+        .toolbar { display: flex; flex-wrap: wrap; gap: 10px; margin: 15px 0; }
+        .toolbar input { flex: 1; padding: 10px 16px; border: none; border-radius: 30px; background: #3d3d5c; color: #fff; font-size: 0.95rem; min-width: 200px; outline: none; }
+        .toolbar input::placeholder { color: #888; }
+        .toolbar button { padding: 10px 22px; border: none; border-radius: 30px; font-weight: 600; cursor: pointer; transition: 0.2s; font-size: 0.9rem; }
+        .btn-add { background: #4ade80; color: #000; }
+        .btn-add:hover { background: #22c55e; }
+        .btn-batch { background: #facc15; color: #000; }
+        .btn-batch:hover { background: #eab308; }
+        .btn-danger { background: #f87171; color: #000; }
+        .btn-danger:hover { background: #ef4444; }
+        .btn-export { background: #60a5fa; color: #000; }
+        .btn-export:hover { background: #3b82f6; }
+        .btn-rename { background: #a78bfa; color: #000; }
+        .btn-rename:hover { background: #8b5cf6; }
+        .btn-upload { background: #fbbf24; color: #000; }
+        .btn-upload:hover { background: #f59e0b; }
+        .btn-download-json { background: #34d399; color: #000; }
+        .btn-download-json:hover { background: #10b981; }
+        .btn-download-all { background: #f472b6; color: #000; }
+        .btn-download-all:hover { background: #ec4899; }
+        .btn-fix { background: #fcd34d; color: #000; }
+        .btn-fix:hover { background: #fbbf24; }
+        .btn-learn { background: #6ee7b7; color: #000; }
+        .btn-learn:hover { background: #34d399; }
+        .btn-clear-rules { background: #fca5a5; color: #000; }
+        .btn-clear-rules:hover { background: #f87171; }
+        .btn-remove-muzzik { background: #f472b6; color: #000; }
+        .btn-remove-muzzik:hover { background: #ec4899; }
+        .table-wrapper { max-height: 400px; overflow-y: auto; border-radius: 12px; border: 1px solid #3d3d5c; }
+        table { width: 100%; border-collapse: collapse; background: #1e1e2e; }
+        th { background: #3b3b5c; color: #ddd; padding: 10px 8px; text-align: left; font-weight: 500; position: sticky; top: 0; z-index: 2; }
+        td { padding: 8px; border-bottom: 1px solid #3d3d5c; color: #eee; }
+        input[type="text"], input[type="number"] { width: 100%; padding: 6px 10px; border: 1px solid #555; border-radius: 6px; background: #2d2d44; color: #fff; }
+        input[type="text"]:focus, input[type="number"]:focus { border-color: #4ade80; outline: none; }
+        select { width: 100%; padding: 6px 10px; border: 1px solid #555; border-radius: 6px; background: #2d2d44; color: #fff; }
+        .actions { display: flex; gap: 4px; flex-wrap: wrap; }
+        .actions button { background: #3d3d5c; color: #fff; border: none; border-radius: 20px; padding: 4px 10px; cursor: pointer; font-size: 0.75rem; }
+        .actions button:hover { background: #5a5a7a; }
+        .actions .del { background: #dc2626; }
+        .actions .del:hover { background: #b91c1c; }
+        .badge { background: #4ade80; color: #000; border-radius: 30px; padding: 2px 14px; font-size: 0.8rem; font-weight: 600; margin-left: 10px; }
+        .status { padding: 8px 16px; border-radius: 8px; margin: 8px 0; font-weight: 500; background: #3d3d5c; color: #ddd; }
+        .status.success { background: #166534; color: #86efac; }
+        .status.error { background: #7f1d1d; color: #fca5a5; }
+        .status.info { background: #1e3a5f; color: #93c5fd; }
+        .export-area { background: #1a1a2e; color: #a5b4fc; padding: 15px; border-radius: 8px; font-family: monospace; font-size: 11px; white-space: pre-wrap; max-height: 300px; overflow-y: auto; margin-top: 15px; word-break: break-all; }
+        .export-area.hidden { display: none; }
+        .copy-hint { color: #888; font-size: 0.7rem; margin-top: 4px; }
+        .id-input { width: 60px !important; min-width: 50px; }
+        .file-input-wrapper { position: relative; overflow: hidden; display: inline-block; }
+        .file-input-wrapper input[type=file] { position: absolute; left: 0; top: 0; opacity: 0; width: 100%; height: 100%; cursor: pointer; }
+        .json-toggle { cursor: pointer; color: #60a5fa; text-decoration: underline; user-select: none; margin-left: 15px; }
+        .json-controls { display: flex; gap: 10px; align-items: center; margin: 10px 0; flex-wrap: wrap; }
+        .order-hint { color: #fbbf24; font-size: 0.75rem; background: rgba(251,191,36,0.15); padding: 4px 12px; border-radius: 20px; }
+        .rules-area { background: #1a1a2e; border-radius: 8px; padding: 15px; margin: 10px 0; border: 1px solid #3d3d5c; }
+        .rules-area h3 { color: #6ee7b7; margin: 0 0 10px 0; font-size: 0.9rem; }
+        .rules-area .rule-item { display: flex; gap: 10px; align-items: center; padding: 4px 0; color: #ddd; font-size: 0.8rem; }
+        .rules-area .rule-item .remove-rule { background: #dc2626; border: none; color: #fff; border-radius: 50%; width: 20px; height: 20px; cursor: pointer; font-size: 0.7rem; }
+        .rules-area textarea { width: 100%; background: #2d2d44; border: 1px solid #555; border-radius: 8px; color: #fff; padding: 8px; font-family: monospace; font-size: 0.8rem; resize: vertical; min-height: 60px; }
+        .rules-area textarea:focus { border-color: #4ade80; outline: none; }
+        .flex-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin: 5px 0; }
+        .badge-id { background: #3b3b5c; padding: 2px 10px; border-radius: 12px; font-size: 0.7rem; color: #888; }
+        .highlight { background: #fbbf24; color: #000; padding: 0 4px; border-radius: 4px; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>🎵 Playlist <span class="badge" id="countBadge">0</span></h1>
+    <div id="statusArea"></div>
+    
+    <!-- REGRAS DE APRENDIZADO -->
+    <div class="rules-area">
+        <h3>🧠 ALGORITMO INTELIGENTE - Regras Aprendidas</h3>
+        <div id="rulesContainer">
+            <div class="rule-item" style="color:#888;">Nenhuma regra personalizada ainda. Use o botão "Aprender" para ensinar o sistema.</div>
+        </div>
+        <div class="flex-row">
+            <input type="text" id="newRuleInput" placeholder="Ex: remover=cover,remix" style="flex:1;padding:8px 14px;border:none;border-radius:20px;background:#3d3d5c;color:#fff;min-width:150px;">
+            <button class="btn-learn" id="addRuleBtn">📖 Aprender</button>
+            <button class="btn-clear-rules" id="clearRulesBtn">🗑️ Limpar Regras</button>
+            <button class="btn-remove-muzzik" id="removeMuzzikBtn">🧹 Remover MUZZIK</button>
+        </div>
+        <div style="margin-top:8px;color:#888;font-size:0.7rem;">
+            💡 Use "remover=palavra1,palavra2" ou "substituir=antigo|novo" ou "separador=|" ou "formato=artist - title" ou "prefixo=texto" ou "sufixo=texto"
+        </div>
+    </div>
+
+    <div class="toolbar">
+        <input type="text" id="fileInput" placeholder='Digite: (Artista)_Titulo.ext  ou Titulo=Artista.ext'>
+        <button class="btn-add" id="addBtn">➕ Adicionar</button>
+        <button class="btn-batch" id="batchBtn">📋 Lote</button>
+        <div class="file-input-wrapper">
+            <button class="btn-upload">📂 Upload Áudio</button>
+            <input type="file" id="fileUpload" multiple accept=".mp3,.m4a,.wav,.flac,.ogg,.aac">
+        </div>
+        <button class="btn-export" id="exportBtn">📋 Copiar JSON</button>
+        <button class="btn-download-json" id="downloadJsonBtn">⬇️ Baixar JSON</button>
+        <button class="btn-rename" id="renameBtn">🔄 Renomear</button>
+        <button class="btn-download-all" id="downloadAllBtn">📦 Baixar Tudo</button>
+        <button class="btn-fix" id="fixBtn">🔧 Corrigir</button>
+        <button class="btn-danger" id="clearBtn">🗑️ Limpar</button>
+    </div>
+
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th style="width:70px;">ID</th>
+                    <th>Artista</th>
+                    <th>Título</th>
+                    <th>Gênero</th>
+                    <th style="width:120px;">Ações</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+        </table>
+    </div>
+
+    <div class="json-controls">
+        <span class="json-toggle" id="jsonToggle">📄 Mostrar/Esconder JSON</span>
+        <span style="color:#888; font-size:0.8rem;">(clique para alternar)</span>
+        <span class="order-hint">✅ Formato: {"id":X,"artist":"Artista","title":"Titulo","genero":"Genero","src":"arquivo.ext"}</span>
+    </div>
+    <div class="export-area" id="exportArea"><span style="color:#888;">[ JSON será exibido aqui ]</span></div>
+    <div class="copy-hint">📌 Use (Artista)_Titulo.ext  ou Titulo=Artista.ext  ou Artista - Titulo.ext</div>
+</div>
+
+<script>
+    // ============================================================
+    // SISTEMA DE REGRAS APRENDIDAS
+    // ============================================================
+    let regrasAprendidas = {
+        remover: [],        // palavras a remover
+        substituir: [],     // {antigo: novo}
+        separador: '=',     // separador padrão
+        formato: 'artist - title', // formato esperado
+        prefixo: '',
+        sufixo: ''
+    };
+
+    // Carregar regras do localStorage
+    function carregarRegras() {
+        try {
+            const saved = localStorage.getItem('regras_aprendidas');
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                regrasAprendidas = { ...regrasAprendidas, ...parsed };
+            }
+        } catch(e) {}
+    }
+
+    function salvarRegras() {
+        try {
+            localStorage.setItem('regras_aprendidas', JSON.stringify(regrasAprendidas));
+        } catch(e) {}
+    }
+
+    function renderizarRegras() {
+        const container = document.getElementById('rulesContainer');
+        container.innerHTML = '';
+        
+        const regrasObj = regrasAprendidas;
+        let temRegra = false;
+
+        if (regrasObj.remover && regrasObj.remover.length > 0) {
+            temRegra = true;
+            regrasObj.remover.forEach(palavra => {
+                const div = document.createElement('div');
+                div.className = 'rule-item';
+                div.innerHTML = `
+                    <span>🗑️ Remover: <strong>${palavra}</strong></span>
+                    <button class="remove-rule" data-tipo="remover" data-valor="${palavra}">✕</button>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        if (regrasObj.substituir && regrasObj.substituir.length > 0) {
+            temRegra = true;
+            regrasObj.substituir.forEach(rule => {
+                const div = document.createElement('div');
+                div.className = 'rule-item';
+                div.innerHTML = `
+                    <span>🔄 Substituir: <strong>${rule.antigo}</strong> → <strong>${rule.novo}</strong></span>
+                    <button class="remove-rule" data-tipo="substituir" data-valor="${rule.antigo}">✕</button>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        if (regrasObj.separador && regrasObj.separador !== '=') {
+            temRegra = true;
+            const div = document.createElement('div');
+            div.className = 'rule-item';
+            div.innerHTML = `
+                <span>🔀 Separador: <strong>${regrasObj.separador}</strong></span>
+                <button class="remove-rule" data-tipo="separador" data-valor="${regrasObj.separador}">✕</button>
+            `;
+            container.appendChild(div);
+        }
+
+        if (regrasObj.formato && regrasObj.formato !== 'artist - title') {
+            temRegra = true;
+            const div = document.createElement('div');
+            div.className = 'rule-item';
+            div.innerHTML = `
+                <span>📐 Formato: <strong>${regrasObj.formato}</strong></span>
+                <button class="remove-rule" data-tipo="formato" data-valor="${regrasObj.formato}">✕</button>
+            `;
+            container.appendChild(div);
+        }
+
+        if (regrasObj.prefixo) {
+            temRegra = true;
+            const div = document.createElement('div');
+            div.className = 'rule-item';
+            div.innerHTML = `
+                <span>📌 Prefixo: <strong>${regrasObj.prefixo}</strong></span>
+                <button class="remove-rule" data-tipo="prefixo" data-valor="${regrasObj.prefixo}">✕</button>
+            `;
+            container.appendChild(div);
+        }
+
+        if (regrasObj.sufixo) {
+            temRegra = true;
+            const div = document.createElement('div');
+            div.className = 'rule-item';
+            div.innerHTML = `
+                <span>📌 Sufixo: <strong>${regrasObj.sufixo}</strong></span>
+                <button class="remove-rule" data-tipo="sufixo" data-valor="${regrasObj.sufixo}">✕</button>
+            `;
+            container.appendChild(div);
+        }
+
+        if (!temRegra) {
+            container.innerHTML = '<div class="rule-item" style="color:#888;">Nenhuma regra personalizada ainda. Use o botão "Aprender" para ensinar o sistema.</div>';
+        }
+
+        // Eventos para remover regras
+        document.querySelectorAll('.remove-rule').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const tipo = this.dataset.tipo;
+                const valor = this.dataset.valor;
+                if (tipo === 'remover') {
+                    regrasAprendidas.remover = regrasAprendidas.remover.filter(p => p !== valor);
+                } else if (tipo === 'substituir') {
+                    regrasAprendidas.substituir = regrasAprendidas.substituir.filter(r => r.antigo !== valor);
+                } else if (tipo === 'separador') {
+                    regrasAprendidas.separador = '=';
+                } else if (tipo === 'formato') {
+                    regrasAprendidas.formato = 'artist - title';
+                } else if (tipo === 'prefixo') {
+                    regrasAprendidas.prefixo = '';
+                } else if (tipo === 'sufixo') {
+                    regrasAprendidas.sufixo = '';
+                }
+                salvarRegras();
+                renderizarRegras();
+                showStatus('🧠 Regra removida!', 'info');
+            });
+        });
+    }
+
+    function processarRegras(texto) {
+        if (!texto) return texto;
+        let processado = texto;
+
+        // Aplicar remoções
+        if (regrasAprendidas.remover) {
+            regrasAprendidas.remover.forEach(palavra => {
+                const regex = new RegExp('\\s*' + palavra + '\\s*', 'gi');
+                processado = processado.replace(regex, ' ');
+            });
+        }
+
+        // Aplicar substituições
+        if (regrasAprendidas.substituir) {
+            regrasAprendidas.substituir.forEach(rule => {
+                const regex = new RegExp(rule.antigo, 'gi');
+                processado = processado.replace(regex, rule.novo);
+            });
+        }
+
+        // Limpar espaços extras
+        processado = processado.replace(/\s+/g, ' ').trim();
+        return processado;
+    }
+
+    // ============================================================
+    // REMOVER MUZZIK DE QUALQUER LUGAR - FUNÇÃO PRINCIPAL
+    // ============================================================
+    function removerMuzzik(texto) {
+        if (!texto) return texto;
+        let limpo = texto;
+        
+        // Todas as variações de muzzik
+        const variacoes = ['muzzik', 'muzik', 'muzzic', 'muzic', 'music', 'musica', 'música'];
+        
+        variacoes.forEach(palavra => {
+            // Remove com espaços ao redor
+            limpo = limpo.replace(new RegExp('\\s*' + palavra + '\\s*', 'gi'), ' ');
+            // Remove com hífen antes
+            limpo = limpo.replace(new RegExp('-' + palavra + '\\s*', 'gi'), ' ');
+            // Remove com hífen depois
+            limpo = limpo.replace(new RegExp(palavra + '-\\s*', 'gi'), ' ');
+            // Remove com underline antes
+            limpo = limpo.replace(new RegExp('_' + palavra + '\\s*', 'gi'), ' ');
+            // Remove com underline depois
+            limpo = limpo.replace(new RegExp(palavra + '_\\s*', 'gi'), ' ');
+            // Remove quando está no meio da palavra (ex: Recado_Pro_muzzik)
+            limpo = limpo.replace(new RegExp('_' + palavra + '_', 'gi'), '_');
+            limpo = limpo.replace(new RegExp('-' + palavra + '-', 'gi'), '-');
+            // Remove quando está no final com underline
+            limpo = limpo.replace(new RegExp('_' + palavra + '$', 'gi'), '');
+            limpo = limpo.replace(new RegExp('-' + palavra + '$', 'gi'), '');
+        });
+        
+        // Remove múltiplos underlines e hífens
+        limpo = limpo.replace(/_{2,}/g, '_');
+        limpo = limpo.replace(/-{2,}/g, '-');
+        limpo = limpo.replace(/[_\s]+$/g, '');
+        limpo = limpo.replace(/^[_\s]+/g, '');
+        limpo = limpo.replace(/\s+/g, ' ').trim();
+        
+        return limpo;
+    }
+
+    // ============================================================
+    // PALAVRAS A REMOVER (PADRÃO) - NÃO REMOVE PARÊNTESES
+    // ============================================================
+    const PALAVRAS_REMOVER_PADRAO = [
+        'show', 'cover', 'oficial', 'remix', 'vers', 'edit', 'exclusive',
+        'trashed', 'trashed-1784938530', 'audio', 'official', 'video', 'clip',
+        'lyrics', 'legendado', 'subtitulado', 'ao vivo', 'live'
+    ];
+
+    // Função de limpeza que NÃO remove parênteses, colchetes ou chaves
+    function limparSemRemoverParenteses(texto) {
+        if (!texto) return '';
+        let limpo = texto;
+        
+        // Remove MUZZIK e variações
+        limpo = removerMuzzik(limpo);
+        
+        // Remove outras palavras indesejadas
+        PALAVRAS_REMOVER_PADRAO.forEach(palavra => {
+            const regex = new RegExp('\\s*' + palavra + '\\s*', 'gi');
+            limpo = limpo.replace(regex, ' ');
+        });
+        
+        // Remove números isolados
+        limpo = limpo.replace(/\b\d+\b/g, ' ');
+        
+        // Remove caracteres especiais (mantém letras, acentos, espaços, hífens, underlines e também parênteses, colchetes, chaves)
+        limpo = limpo.replace(/[^a-zA-ZÀ-ÖØ-öø-ÿ\s\-_()\[\]{}]/g, ' ');
+        
+        // Remove múltiplos espaços
+        limpo = limpo.replace(/\s+/g, ' ').trim();
+        
+        return limpo;
+    }
+
+    // Função de limpeza padrão (para títulos, que podem ter parênteses removidos)
+    function limparSuave(texto) {
+        if (!texto) return '';
+        let limpo = texto;
+        
+        // REMOVE MUZZIK E VARIAÇÕES (FORÇADO)
+        limpo = removerMuzzik(limpo);
+        
+        // Remove outras palavras indesejadas
+        PALAVRAS_REMOVER_PADRAO.forEach(palavra => {
+            const regex = new RegExp('\\s*' + palavra + '\\s*', 'gi');
+            limpo = limpo.replace(regex, ' ');
+        });
+        
+        // Remove números isolados
+        limpo = limpo.replace(/\b\d+\b/g, ' ');
+        
+        // Remove caracteres especiais (mantém letras, acentos, espaços, hífens)
+        limpo = limpo.replace(/[^a-zA-ZÀ-ÖØ-öø-ÿ\s\-_]/g, ' ');
+        
+        // Remove múltiplos espaços
+        limpo = limpo.replace(/\s+/g, ' ').trim();
+        
+        return limpo;
+    }
+
+    const GENRES = [
+        "POP", "PAGODE", "SERTANEJO", "MPB", "ROCK", "FORRÓ", "SAMBA", "AXÉ", "BREGA",
+        "GLOBAL HITS", "REGGAE", "MODA RAIZ", "POP/ROCK", "CRISTÃ HITS", "ACADEMIA",
+        "DRIVE HITS", "DORMIR", "FEST HITS", "FORRÓ ANTIGO", "ARROCHA", "ROCK HITS",
+        "KIDS HITS", "ROMÂNTICAS", "LOVE SONGS", "TOP 10", "PRAIA HITS", "AXÉ HITS",
+        "FUNK", "ELECTRONIC", "BOSSANOVA", "JAZZ", "BLUES", "MODA TOP"
+    ];
+
+    let playlist = [];
+
+    function showStatus(msg, type = 'info') {
+        const area = document.getElementById('statusArea');
+        const div = document.createElement('div');
+        div.className = `status ${type}`;
+        div.textContent = msg;
+        area.appendChild(div);
+        setTimeout(() => { if (div.parentNode) div.remove(); }, 4000);
+    }
+
+    // ============================================================
+    // GERAR JSON NO FORMATO: {"id":X,"artist":"Artista","title":"Titulo","genero":"Genero","src":"arquivo.ext"}
+    // ============================================================
+    function gerarJSONLinha() {
+        if (playlist.length === 0) return '[]';
+        const objetos = playlist.map(item => {
+            const obj = {
+                id: item.id,
+                artist: item.artist,
+                title: item.title,
+                genero: item.genero,
+                src: item.src
+            };
+            return JSON.stringify(obj);
+        });
+        return '[\n' + objetos.join(',\n') + '\n]';
+    }
+
+    function updateUI() {
+        document.getElementById('exportArea').textContent = gerarJSONLinha() || '[ vazio ]';
+        document.getElementById('countBadge').textContent = playlist.length;
+    }
+
+    function gerarNovoNome(item) {
+        const ext = item.src.includes('.') ? item.src.substring(item.src.lastIndexOf('.')) : '';
+        let nomeBase = `${item.artist} - ${item.title} (${item.genero})`;
+        nomeBase = nomeBase.replace(/[<>:"/\\|?*]/g, '').replace(/\s+/g, ' ');
+        return nomeBase + ext;
+    }
+
+    // ============================================================
+    // EXTRAÇÃO INTELIGENTE - RECONHECE (Artista)_Titulo
+    // ============================================================
+    function extrairDoNome(nomeArquivo) {
+        const srcOriginal = nomeArquivo;
+        const ultimoPonto = nomeArquivo.lastIndexOf('.');
+        let base = nomeArquivo;
+        if (ultimoPonto > 0) {
+            base = nomeArquivo.substring(0, ultimoPonto);
+        }
+
+        // Primeiro: remover MUZZIK e palavras indesejadas do nome base para facilitar a extração,
+        // mas preservando parênteses no artista.
+        let baseLimpa = removerMuzzik(base); // só remove muzzik, não remove parênteses
+
+        // TENTAR EXTRAIR ARTISTA ENTRE PARÊNTESES: (Daniel)_O_Cheiro_Dela
+        let artistaExtraido = '';
+        let tituloExtraido = '';
+        
+        // Padrão: (Artista)_Titulo ou [Artista]_Titulo
+        const matchParenteses = baseLimpa.match(/^[\(\[]([^\)\]]+)[\)\]][_\s]+(.+)$/);
+        if (matchParenteses) {
+            // Mantém os parênteses no artista
+            const abertura = baseLimpa[0]; // '(' ou '['
+            const fechamento = abertura === '(' ? ')' : ']';
+            artistaExtraido = abertura + matchParenteses[1].trim() + fechamento;
+            tituloExtraido = matchParenteses[2].trim();
+            // Substituir underlines por espaços no título
+            tituloExtraido = tituloExtraido.replace(/_/g, ' ');
+            return {
+                titulo: limparSuave(tituloExtraido) || 'Música',
+                artista: limparSemRemoverParenteses(artistaExtraido) || '(Desconhecido)',
+                genero: "MPB",
+                src: srcOriginal
+            };
+        }
+
+        // Tentar extrair artista entre parênteses no final: Titulo_(Artista)
+        const matchParentesesFinal = baseLimpa.match(/^(.+)[_\s]+[\(\[]([^\)\]]+)[\)\]]$/);
+        if (matchParentesesFinal) {
+            const abertura = baseLimpa[baseLimpa.length - 1] === ')' ? '(' : '[';
+            const fechamento = abertura === '(' ? ')' : ']';
+            artistaExtraido = abertura + matchParentesesFinal[2].trim() + fechamento;
+            tituloExtraido = matchParentesesFinal[1].trim();
+            tituloExtraido = tituloExtraido.replace(/_/g, ' ');
+            return {
+                titulo: limparSuave(tituloExtraido) || 'Música',
+                artista: limparSemRemoverParenteses(artistaExtraido) || '(Desconhecido)',
+                genero: "MPB",
+                src: srcOriginal
+            };
+        }
+
+        // Aplicar regras de aprendizado
+        let baseProcessado = processarRegras(baseLimpa);
+
+        // Usar separador aprendido
+        const separador = regrasAprendidas.separador || '=';
+        const separadores = [separador, '|', ';', ':'];
+        let titulo = '', artista = '';
+        let encontrou = false;
+
+        for (const sep of separadores) {
+            if (baseProcessado.includes(sep)) {
+                const partes = baseProcessado.split(sep);
+                if (partes.length >= 2) {
+                    titulo = partes[0].trim();
+                    artista = partes.slice(1).join(sep).trim();
+                    encontrou = true;
+                    break;
+                }
+            }
+        }
+
+        if (encontrou) {
+            titulo = limparSuave(titulo) || 'Música';
+            artista = limparSuave(artista) || 'Desconhecido';
+            const genero = "MPB";
+            return { titulo, artista, genero, src: srcOriginal };
+        }
+
+        // Tentar formato "Artista - Titulo" ou "Titulo - Artista"
+        let baseLimpo = limparSuave(baseProcessado);
+        baseLimpo = baseLimpo.replace(/\s+/g, ' ').trim();
+
+        // Verificar se tem " - "
+        const idxSep = baseLimpo.indexOf(' - ');
+        if (idxSep !== -1) {
+            const antes = baseLimpo.substring(0, idxSep).trim();
+            const depois = baseLimpo.substring(idxSep + 3).trim();
+            // Tentar determinar qual é artista e qual é título
+            if (regrasAprendidas.formato === 'artist - title') {
+                artista = antes;
+                titulo = depois;
+            } else if (regrasAprendidas.formato === 'title - artist') {
+                titulo = antes;
+                artista = depois;
+            } else {
+                // Detecção automática: se um lado parece nome de artista (contém &, feat, etc)
+                if (antes.match(/feat|&|,/i) || depois.match(/feat|&|,/i)) {
+                    artista = antes;
+                    titulo = depois;
+                } else {
+                    // Por padrão: primeiro = título, segundo = artista
+                    titulo = antes;
+                    artista = depois;
+                }
+            }
+        } else {
+            // Substituir underlines por espaços
+            baseLimpo = baseLimpo.replace(/_/g, ' ');
+            
+            const ultimoHifen = baseLimpo.lastIndexOf('-');
+            if (ultimoHifen !== -1) {
+                const antes = baseLimpo.substring(0, ultimoHifen).trim();
+                const depois = baseLimpo.substring(ultimoHifen + 1).trim();
+                if (antes.length <= 3 && depois.length > 3) {
+                    artista = baseLimpo;
+                    titulo = 'Música';
+                } else {
+                    titulo = antes;
+                    artista = depois;
+                }
+            } else {
+                const tokens = baseLimpo.split(/\s+/).filter(t => t.length > 0);
+                if (tokens.length === 1) {
+                    titulo = tokens[0];
+                    artista = 'Desconhecido';
+                } else {
+                    const metade = Math.ceil(tokens.length / 2);
+                    titulo = tokens.slice(0, metade).join(' ');
+                    artista = tokens.slice(metade).join(' ');
+                }
+            }
+        }
+
+        // Aplicar prefixo e sufixo
+        if (regrasAprendidas.prefixo && artista && !artista.startsWith(regrasAprendidas.prefixo)) {
+            artista = regrasAprendidas.prefixo + artista;
+        }
+        if (regrasAprendidas.sufixo && artista && !artista.endsWith(regrasAprendidas.sufixo)) {
+            artista = artista + regrasAprendidas.sufixo;
+        }
+
+        titulo = limparSuave(titulo) || 'Música';
+        artista = limparSuave(artista) || 'Desconhecido';
+        const genero = "MPB";
+
+        return { titulo, artista, genero, src: srcOriginal };
+    }
+
+    // ============================================================
+    // FUNÇÃO PARA REMOVER MUZZIK DE TODA A PLAYLIST
+    // ============================================================
+    function removerMuzzikDaPlaylist() {
+        if (playlist.length === 0) {
+            showStatus('⚠️ Playlist vazia', 'error');
+            return;
+        }
+
+        let removidos = 0;
+        playlist.forEach(item => {
+            // Remover de artist (preservando parênteses)
+            const artistAntigo = item.artist;
+            item.artist = limparSemRemoverParenteses(item.artist);
+            if (item.artist !== artistAntigo) removidos++;
+            
+            // Remover de title
+            const titleAntigo = item.title;
+            item.title = limparSuave(item.title);
+            if (item.title !== titleAntigo) removidos++;
+            
+            // Remover de src (preservando parênteses)
+            const srcAntigo = item.src;
+            item.src = removerMuzzik(item.src);
+            if (item.src !== srcAntigo) removidos++;
+        });
+
+        render();
+        updateUI();
+        showStatus(`🧹 MUZZIK removido de ${removidos} campos!`, 'success');
+    }
+
+    // ============================================================
+    // CORRIGIR JSON - Remove vírgulas extras, chaves incomuns, espaços
+    // ============================================================
+    function corrigirJSON() {
+        if (playlist.length === 0) {
+            showStatus('⚠️ Playlist vazia', 'error');
+            return;
+        }
+
+        let corrigidos = 0;
+        playlist.forEach(item => {
+            let src = item.src;
+            // Remover espaços no início/fim
+            src = src.trim();
+            // Substituir múltiplos espaços por underline
+            src = src.replace(/\s+/g, '_');
+            // Remover caracteres especiais problemáticos (mas preservar parênteses)
+            src = src.replace(/[^a-zA-Z0-9\-_()\[\]]/g, '');
+            // REMOVER MUZZIK DO SRC
+            src = removerMuzzik(src);
+            // Garantir que tem extensão
+            if (!src.includes('.')) {
+                src = src + '.m4a';
+            }
+            if (src !== item.src) {
+                item.src = src;
+                corrigidos++;
+            }
+
+            // Limpar artista (preservando parênteses) e título
+            item.artist = limparSemRemoverParenteses(item.artist) || '(Desconhecido)';
+            item.title = limparSuave(item.title) || 'Música';
+        });
+
+        render();
+        updateUI();
+        showStatus(`🔧 Corrigidos ${corrigidos} itens (MUZZIK removido, espaços, caracteres)`, 'success');
+    }
+
+    // ============================================================
+    // ADICIONAR ITEM
+    // ============================================================
+    function adicionarItem(titulo, artista, genero, src) {
+        titulo = limparSuave(titulo) || 'Música';
+        artista = limparSemRemoverParenteses(artista) || '(Desconhecido)';
+        genero = (genero && genero.trim()) ? genero : 'MPB';
+
+        // Corrigir src automaticamente - REMOVE MUZZIK, preserva parênteses
+        let srcCorrigido = src.trim().replace(/\s+/g, '_');
+        srcCorrigido = srcCorrigido.replace(/[^a-zA-Z0-9\-_()\[\]]/g, '');
+        srcCorrigido = removerMuzzik(srcCorrigido);
+        if (!srcCorrigido.includes('.')) {
+            srcCorrigido = srcCorrigido + '.m4a';
+        }
+
+        const maxId = playlist.length ? Math.max(...playlist.map(p => p.id)) : 0;
+        const item = {
+            id: maxId + 1,
+            title: titulo,
+            artist: artista,
+            genero: genero,
+            src: srcCorrigido
+        };
+        playlist.push(item);
+        render();
+        showStatus(`✅ ${artista} - ${titulo} (${genero})`, 'success');
+    }
+
+    // ============================================================
+    // LER ARQUIVOS
+    // ============================================================
+    function lerArquivos(files) {
+        if (!files || files.length === 0) return;
+        const arquivosAudio = Array.from(files).filter(f => /\.(mp3|m4a|wav|flac|ogg|aac)$/i.test(f.name));
+        if (arquivosAudio.length === 0) {
+            showStatus('⚠️ Nenhum arquivo de áudio suportado encontrado.', 'error');
+            return;
+        }
+
+        let processados = 0;
+        arquivosAudio.forEach(file => {
+            const nomeArquivo = file.name;
+            let { titulo, artista, genero, src } = extrairDoNome(nomeArquivo);
+
+            const finalizar = (tags) => {
+                const temSep = nomeArquivo.includes('=') || nomeArquivo.includes('|') || 
+                               nomeArquivo.includes(';') || nomeArquivo.includes(':');
+                if (tags && !temSep) {
+                    if (tags.title) titulo = limparSuave(tags.title);
+                    if (tags.artist) artista = limparSemRemoverParenteses(tags.artist);
+                }
+                genero = "MPB";
+                adicionarItem(titulo, artista, genero, src);
+                processados++;
+                if (processados === arquivosAudio.length) {
+                    showStatus(`📦 ${arquivosAudio.length} arquivos processados.`, 'info');
+                }
+            };
+
+            if (typeof jsmediatags !== 'undefined') {
+                try {
+                    jsmediatags.read(file, {
+                        onSuccess: tag => finalizar(tag.tags),
+                        onError: () => finalizar(null)
+                    });
+                } catch (e) {
+                    finalizar(null);
+                }
+            } else {
+                finalizar(null);
+            }
+        });
+    }
+
+    // ============================================================
+    // GERAR SCRIPT DE RENOMEAR
+    // ============================================================
+    function gerarScriptRenomear() {
+        if (playlist.length === 0) {
+            showStatus('⚠️ Playlist vazia.', 'error');
+            return null;
+        }
+        const isWindows = navigator.userAgent.indexOf('Windows') !== -1;
+        let script = isWindows ? '@echo off\n' : '#!/bin/bash\n\n';
+        script += isWindows ? 'REM Script de renomeação gerado automaticamente\n' : '# Script de renomeação gerado automaticamente\n';
+        script += isWindows ? 'REM Coloque este arquivo na pasta das músicas e execute.\n\n' : '# Coloque este arquivo na pasta das músicas e execute.\n\n';
+
+        let linhas = [];
+        playlist.forEach(item => {
+            const nomeAntigo = item.src;
+            const nomeNovo = gerarNovoNome(item);
+            linhas.push(isWindows ? `ren "${nomeAntigo}" "${nomeNovo}"` : `mv "${nomeAntigo}" "${nomeNovo}"`);
+        });
+        script += linhas.join('\n');
+        script += isWindows ? '\necho Renomeação concluída!' : '\n\necho "Renomeação concluída!"';
+        return script;
+    }
+
+    function baixarScript() {
+        const script = gerarScriptRenomear();
+        if (!script) return;
+        const isWindows = navigator.userAgent.indexOf('Windows') !== -1;
+        const nome = isWindows ? 'renomear.bat' : 'renomear.sh';
+        const blob = new Blob([script], { type: 'text/plain' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = nome;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(link.href);
+        showStatus(`📦 Script ${nome} baixado.`, 'success');
+    }
+
+    function baixarTudo() {
+        const json = gerarJSONLinha();
+        const script = gerarScriptRenomear();
+        if (!json || playlist.length === 0 || !script) {
+            showStatus('⚠️ Playlist vazia', 'error');
+            return;
+        }
+        const isWindows = navigator.userAgent.indexOf('Windows') !== -1;
+        const scriptNome = isWindows ? 'renomear.bat' : 'renomear.sh';
+
+        const blobJson = new Blob([json], { type: 'application/json' });
+        const linkJson = document.createElement('a');
+        linkJson.href = URL.createObjectURL(blobJson);
+        linkJson.download = 'playlist.json';
+        document.body.appendChild(linkJson);
+        linkJson.click();
+        document.body.removeChild(linkJson);
+
+        setTimeout(() => {
+            const blobScript = new Blob([script], { type: 'text/plain' });
+            const linkScript = document.createElement('a');
+            linkScript.href = URL.createObjectURL(blobScript);
+            linkScript.download = scriptNome;
+            document.body.appendChild(linkScript);
+            linkScript.click();
+            document.body.removeChild(linkScript);
+            URL.revokeObjectURL(linkJson.href);
+            URL.revokeObjectURL(linkScript.href);
+            showStatus('📦 JSON e script baixados!', 'success');
+        }, 300);
+    }
+
+    // ============================================================
+    // RENDERIZAR TABELA
+    // ============================================================
+    function render() {
+        const tbody = document.getElementById('tableBody');
+        tbody.innerHTML = '';
+
+        playlist.forEach((item, idx) => {
+            const tr = document.createElement('tr');
+
+            // ID
+            const tdId = document.createElement('td');
+            const inpId = document.createElement('input');
+            inpId.type = 'number';
+            inpId.className = 'id-input';
+            inpId.value = item.id;
+            inpId.min = 0;
+            inpId.onchange = () => {
+                const novoId = parseInt(inpId.value);
+                if (!isNaN(novoId) && novoId > 0) {
+                    item.id = novoId;
+                } else {
+                    inpId.value = item.id;
+                    showStatus('ID deve ser um número positivo', 'error');
+                }
+                updateUI();
+            };
+            tdId.appendChild(inpId);
+            tr.appendChild(tdId);
+
+            // ARTISTA
+            const tdArtist = document.createElement('td');
+            const inpArtist = document.createElement('input');
+            inpArtist.type = 'text';
+            inpArtist.value = item.artist;
+            inpArtist.onchange = () => { item.artist = inpArtist.value; updateUI(); };
+            tdArtist.appendChild(inpArtist);
+            tr.appendChild(tdArtist);
+
+            // TÍTULO
+            const tdTitle = document.createElement('td');
+            const inpTitle = document.createElement('input');
+            inpTitle.type = 'text';
+            inpTitle.value = item.title;
+            inpTitle.onchange = () => { item.title = inpTitle.value; updateUI(); };
+            tdTitle.appendChild(inpTitle);
+            tr.appendChild(tdTitle);
+
+            // Gênero
+            const tdGen = document.createElement('td');
+            const selGen = document.createElement('select');
+            GENRES.forEach(g => {
+                const opt = document.createElement('option');
+                opt.value = g;
+                opt.textContent = g;
+                if (g === item.genero) opt.selected = true;
+                selGen.appendChild(opt);
+            });
+            selGen.onchange = () => { item.genero = selGen.value; updateUI(); };
+            tdGen.appendChild(selGen);
+            tr.appendChild(tdGen);
+
+            // Ações
+            const tdActions = document.createElement('td');
+            tdActions.className = 'actions';
+            const up = document.createElement('button');
+            up.textContent = '↑';
+            up.onclick = () => {
+                if (idx > 0) {
+                    [playlist[idx - 1], playlist[idx]] = [playlist[idx], playlist[idx - 1]];
+                    render();
+                }
+            };
+            const down = document.createElement('button');
+            down.textContent = '↓';
+            down.onclick = () => {
+                if (idx < playlist.length - 1) {
+                    [playlist[idx + 1], playlist[idx]] = [playlist[idx], playlist[idx + 1]];
+                    render();
+                }
+            };
+            const del = document.createElement('button');
+            del.textContent = '🗑️';
+            del.className = 'del';
+            del.onclick = () => {
+                playlist.splice(idx, 1);
+                render();
+            };
+            tdActions.append(up, down, del);
+            tr.appendChild(tdActions);
+
+            tbody.appendChild(tr);
+        });
+
+        updateUI();
+    }
+
+    // ============================================================
+    // APRENDER REGRAS
+    // ============================================================
+    function aprenderRegra(comando) {
+        const cmd = comando.trim().toLowerCase();
+        
+        if (cmd.startsWith('remover=')) {
+            const palavras = cmd.substring(8).split(',').map(p => p.trim()).filter(p => p);
+            if (palavras.length > 0) {
+                palavras.forEach(p => {
+                    if (!regrasAprendidas.remover.includes(p)) {
+                        regrasAprendidas.remover.push(p);
+                    }
+                });
+                salvarRegras();
+                renderizarRegras();
+                showStatus(`🧠 Aprendi: remover ${palavras.join(', ')}`, 'success');
+                return true;
+            }
+        }
+        
+        if (cmd.startsWith('substituir=')) {
+            const partes = cmd.substring(11).split('|');
+            if (partes.length === 2) {
+                const antigo = partes[0].trim();
+                const novo = partes[1].trim();
+                if (antigo && novo) {
+                    regrasAprendidas.substituir.push({ antigo, novo });
+                    salvarRegras();
+                    renderizarRegras();
+                    showStatus(`🧠 Aprendi: substituir "${antigo}" por "${novo}"`, 'success');
+                    return true;
+                }
+            }
+        }
+        
+        if (cmd.startsWith('separador=')) {
+            const sep = cmd.substring(10).trim();
+            if (sep && sep.length === 1) {
+                regrasAprendidas.separador = sep;
+                salvarRegras();
+                renderizarRegras();
+                showStatus(`🧠 Aprendi: separador "${sep}"`, 'success');
+                return true;
+            }
+        }
+        
+        if (cmd.startsWith('formato=')) {
+            const formato = cmd.substring(8).trim();
+            if (formato === 'artist - title' || formato === 'title - artist') {
+                regrasAprendidas.formato = formato;
+                salvarRegras();
+                renderizarRegras();
+                showStatus(`🧠 Aprendi: formato "${formato}"`, 'success');
+                return true;
+            }
+        }
+        
+        if (cmd.startsWith('prefixo=')) {
+            const prefixo = cmd.substring(8).trim();
+            if (prefixo) {
+                regrasAprendidas.prefixo = prefixo + ' ';
+                salvarRegras();
+                renderizarRegras();
+                showStatus(`🧠 Aprendi: prefixo "${prefixo}"`, 'success');
+                return true;
+            }
+        }
+        
+        if (cmd.startsWith('sufixo=')) {
+            const sufixo = cmd.substring(7).trim();
+            if (sufixo) {
+                regrasAprendidas.sufixo = ' ' + sufixo;
+                salvarRegras();
+                renderizarRegras();
+                showStatus(`🧠 Aprendi: sufixo "${sufixo}"`, 'success');
+                return true;
+            }
+        }
+        
+        showStatus('⚠️ Comando não reconhecido. Ex: remover=cover,remix | substituir=old|new | separador=| | formato=artist - title | prefixo=MC | sufixo=Oficial', 'error');
+        return false;
+    }
+
+    // ============================================================
+    // EVENTOS
+    // ============================================================
+    document.addEventListener('DOMContentLoaded', () => {
+        carregarRegras();
+        renderizarRegras();
+        playlist = [];
+        render();
+
+        const input = document.getElementById('fileInput');
+
+        document.getElementById('addBtn').addEventListener('click', () => {
+            const nome = input.value.trim();
+            if (!nome) { showStatus('⚠️ Digite o nome', 'error'); return; }
+            const { titulo, artista, genero, src } = extrairDoNome(nome);
+            adicionarItem(titulo, artista, genero, src);
+            input.value = '';
+            input.focus();
+        });
+
+        document.getElementById('batchBtn').addEventListener('click', () => {
+            const texto = input.value;
+            if (!texto.includes('\n')) {
+                document.getElementById('addBtn').click();
+                return;
+            }
+            const linhas = texto.split('\n').filter(l => l.trim() !== '');
+            if (linhas.length === 0) { showStatus('⚠️ Nenhum nome', 'error'); return; }
+            linhas.forEach(nome => {
+                const { titulo, artista, genero, src } = extrairDoNome(nome.trim());
+                adicionarItem(titulo, artista, genero, src);
+            });
+            input.value = '';
+            input.focus();
+            showStatus(`✅ ${linhas.length} músicas adicionadas`, 'success');
+        });
+
+        document.getElementById('fileUpload').addEventListener('change', function(e) {
+            if (e.target.files && e.target.files.length > 0) {
+                lerArquivos(e.target.files);
+                this.value = '';
+            }
+        });
+
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                if (input.value.includes('\n')) document.getElementById('batchBtn').click();
+                else document.getElementById('addBtn').click();
+            }
+        });
+
+        document.getElementById('exportBtn').addEventListener('click', () => {
+            const json = gerarJSONLinha();
+            if (!json || playlist.length === 0) { showStatus('⚠️ Vazia', 'error'); return; }
+            navigator.clipboard.writeText(json)
+                .then(() => showStatus('📋 JSON copiado!'))
+                .catch(() => showStatus('Erro ao copiar', 'error'));
+        });
+
+        document.getElementById('downloadJsonBtn').addEventListener('click', () => {
+            const json = gerarJSONLinha();
+            if (!json || playlist.length === 0) { showStatus('⚠️ Vazia', 'error'); return; }
+            const blob = new Blob([json], { type: 'application/json' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'playlist.json';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(link.href);
+            showStatus('⬇️ JSON baixado!', 'success');
+        });
+
+        document.getElementById('jsonToggle').addEventListener('click', () => {
+            document.getElementById('exportArea').classList.toggle('hidden');
+        });
+
+        document.getElementById('renameBtn').addEventListener('click', baixarScript);
+        document.getElementById('downloadAllBtn').addEventListener('click', baixarTudo);
+        document.getElementById('fixBtn').addEventListener('click', corrigirJSON);
+
+        // Botão específico para remover MUZZIK
+        document.getElementById('removeMuzzikBtn').addEventListener('click', removerMuzzikDaPlaylist);
+
+        document.getElementById('clearBtn').addEventListener('click', () => {
+            if (playlist.length === 0) { showStatus('Já vazia', 'error'); return; }
+            if (confirm('🗑️ Limpar tudo?')) {
+                playlist = [];
+                render();
+                showStatus('🗑️ Limpo');
+            }
+        });
+
+        // APRENDER REGRA
+        document.getElementById('addRuleBtn').addEventListener('click', () => {
+            const comando = document.getElementById('newRuleInput').value.trim();
+            if (!comando) { showStatus('⚠️ Digite um comando', 'error'); return; }
+            aprenderRegra(comando);
+            document.getElementById('newRuleInput').value = '';
+        });
+
+        document.getElementById('newRuleInput').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                document.getElementById('addRuleBtn').click();
+            }
+        });
+
+        document.getElementById('clearRulesBtn').addEventListener('click', () => {
+            if (confirm('🗑️ Limpar todas as regras aprendidas?')) {
+                regrasAprendidas = {
+                    remover: [],
+                    substituir: [],
+                    separador: '=',
+                    formato: 'artist - title',
+                    prefixo: '',
+                    sufixo: ''
+                };
+                salvarRegras();
+                renderizarRegras();
+                showStatus('🧠 Regras limpas!', 'info');
+            }
+        });
+
+        showStatus('🎵 Pronto! Reconhece (Artista)_Titulo.ext e remove MUZZIK, preservando parênteses.', 'info');
+    });
+</script>
+</body>
+</html>
